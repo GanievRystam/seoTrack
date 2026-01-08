@@ -1,4 +1,4 @@
-import { Navigate, createBrowserRouter } from "react-router-dom";
+﻿import { Navigate, createHashRouter } from "react-router-dom";
 import { AppLayout } from "../layout/AppLayout";
 import { LoginPage } from "../pages/login/LoginPage";
 import { ProjectDetailsPage } from "../pages/projects/ProjectDetailsPage";
@@ -7,7 +7,7 @@ import { ProjectAdd } from "../pages/projects/ProjectAdd";
 import { RegisterPage } from "../pages/register/RegisterPage";
 import { ProtectedRoute } from "./ProtectedRoute";
 
-export const router = createBrowserRouter([
+export const router = createHashRouter([
   {
     element: <AppLayout />,
     children: [
@@ -29,3 +29,4 @@ export const router = createBrowserRouter([
     ],
   },
 ]);
+
