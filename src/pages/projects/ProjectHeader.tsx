@@ -7,9 +7,7 @@ export function ProjectsHeader() {
         <h1 className="page__title">Projects</h1>
         <p className="page__subtitle">Your SEO and performance watchlist.</p>
       </div>
-      <Link to="add" className="button button--ghost">
-        Добавить проект
-      </Link>
+
     </div>
     )
 }

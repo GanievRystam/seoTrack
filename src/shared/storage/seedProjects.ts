@@ -65,7 +65,7 @@ export function seedProjectsOnce() {
     {
       id: "checkRun1",
       projectId: "proj_6501f60678a0c_19b9d5beca6",
-      checkedAt: "2025-08-12T16:07:00Z",
+      checkedAt: "12.08.2025 16:07",
       status: "ok",
       metrics: {
         lcp: 2500,
@@ -82,8 +82,8 @@ export function seedProjectsOnce() {
     },
     {
       id: "checkRun2",
-      projectId: "proj_6501f60678a0c_19b9d5beca6",
-      checkedAt: "2025-09-12T16:07:00Z",
+      projectId: "aurora-store",
+      checkedAt: "12.09.2025 18:07",
       status: "warning",
       metrics: {
         lcp: 3500,
@@ -101,13 +101,49 @@ export function seedProjectsOnce() {
     {
       id: "checkRun3",
       projectId: "aurora-store",
-      checkedAt: "2025-10-12T16:07:00Z",
+      checkedAt: "12.10.2025 11:07",
       status: "critical",
       metrics: {
         lcp: 4500,
         cls: 0.4,
         inp: 650,
         ttfb: 2100,
+        pageWeightKb: 2200,
+      },
+      scriptChanges: [
+        { type: "added", src: "https://www.google.com/js/v1/api.js" },
+        { type: "removed", src: "https://www.google.com/js/v1/api.js" },
+        { type: "weightChanged", src: "https://www.google.com/js/v1/api.js", prevKb: 1000, nextKb: 1000 },
+      ],
+    },
+    {
+      id: "checkRun4",
+      projectId: "aurora-store",
+      checkedAt: "12.11.2025 11:07",
+      status: "critical",
+      metrics: {
+        lcp: 8,
+        cls: 4,
+        inp: 6,
+        ttfb: 124,
+        pageWeightKb: 324,
+      },
+      scriptChanges: [
+        { type: "added", src: "https://www.google.com/js/v1/api.js" },
+        { type: "removed", src: "https://www.google.com/js/v1/api.js" },
+        { type: "weightChanged", src: "https://www.google.com/js/v1/api.js", prevKb: 1000, nextKb: 1000 },
+      ],
+    },
+    {
+      id: "checkRun4",
+      projectId: "aurora-store",
+      checkedAt: "12.12.2025 11:07",
+      status: "critical",
+      metrics: {
+        lcp: 111,
+        cls: 0.5,
+        inp: 324,
+        ttfb: 1111,
         pageWeightKb: 2200,
       },
       scriptChanges: [
