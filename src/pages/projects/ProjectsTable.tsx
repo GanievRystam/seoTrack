@@ -1,11 +1,40 @@
 
-import { listMyProjects } from "../../shared/storage/projectStore";
 import { PROJECT_METRICS } from "../../shared/lib/projectMetrics";
 import styles from './ProjectTable.module.css'
 import { Link } from "react-router-dom";
+import { fetchProjects } from "../../shared/api/projects";
+import { useEffect, useState } from "react";
+import type { Project } from "../../shared/types/project";
+import loading from '../../assets/loader.gif'
 export function ProjectsTable() {
-  const UserProjects = listMyProjects();
+
+  const [fetchedProjects, setFetchedProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchProjects("demo@demo.com")
+      .then((projects) => {
+        setFetchedProjects(projects);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        setError("Произошла ошибка при загрузке проектов. Попробуйте позже.");
+        setIsLoading(false);
+      });
+  }, []);
+
     return (
+      isLoading ? (
+        <div className="table-container">
+          <img src={loading} alt="Загрузка" />
+          <p className="muted">Загрузка проектов...</p>
+        </div>
+      ) : error ? (
+        <div className="table-container">
+          <p className="muted">{error}</p>
+        </div>
+      ) : !!fetchedProjects.length ? (
         <table className={styles.table}>
           <thead>
             <tr className={styles.tableHeader}>
@@ -20,7 +49,7 @@ export function ProjectsTable() {
             </tr>
           </thead>
           <tbody>
-            {UserProjects.map((project) => (
+            {fetchedProjects.map((project) => (
                  <tr key={project.id}>
                  <td className={styles.tableRowName}>
                    <Link to={`/projects/${project.id}`} className="table__link">
@@ -39,11 +68,21 @@ export function ProjectsTable() {
                    <span className="muted">{project.lastIncident}</span>
                  </td>
                  {PROJECT_METRICS.map((metric) => (
-                   <td key={metric.key}>{project.metrics[metric.key] ?? "-"}</td>
+                   <td key={metric.key}>
+                     {project.metrics?.desc?.[metric.key] !== undefined
+                       ? project.metrics.desc[metric.key]
+                       : "-"}
+                   </td>
                  ))}
                </tr>
             ))}
           </tbody>
         </table>
+      ) : (
+        <div className="table-container">
+          <p className="muted">Проекты не найдены</p>
+          <Link to="/projects/add" className="button button--primary">Добавить проект</Link>
+        </div>
+      )
     )
 }

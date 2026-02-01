@@ -1,6 +1,7 @@
 
 import { ProjectsHeader } from "./ProjectHeader";
 import { ProjectsTable } from "./ProjectsTable";
+import { RecentIncidents } from "./RecentIncidents";
 
 export function ProjectsPage() {
   return (
@@ -10,6 +11,8 @@ export function ProjectsPage() {
       <div className="table-container">
         <ProjectsTable />
       </div>
+      
+      <RecentIncidents/>
     </div>
   );
 }

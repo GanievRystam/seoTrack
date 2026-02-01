@@ -33,12 +33,7 @@
   
   a { color: inherit; text-decoration: none; }
   
-  .app { min-height: 100vh; display: flex; flex-direction: column; }
-  
-  .container {
-    width: min(var(--container), calc(100% - 32px));
-    margin: 0 auto;
-  }
+
   
   .topbar {
     position: sticky;
@@ -81,26 +76,7 @@
   .nav__link:hover { color: var(--text); border-color: var(--border); background: rgba(255,255,255,0.03); }
   .nav__link--active { color: var(--text); border-color: var(--border); background: rgba(255,255,255,0.05); }
   
-.main { flex: 1; display: flex; gap: 0; }
 
-.main__content {
-  flex: 1;
-  padding: 22px 0 36px;
-}
-  
-  .footer {
-    border-top: 2px solid var(--border);
-    background: rgba(15, 23, 42, 0.6);
-  }
-  .footer__inner {
-    height: 52px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--muted);
-    font-size: 12px;
-  }
-  .footer__sep { opacity: 0.5; }
 
   .page { display: flex; flex-direction: column; gap: 16px; }
   .page__header {
@@ -181,7 +157,7 @@
     border: 2px solid var(--border);
     text-transform: capitalize;
   }
-  .status--ok { color: #34d399; background: rgba(52, 211, 153, 0.12); border-color: rgba(52, 211, 153, 0.25); }
+  .status--success { color: #34d399; background: rgba(52, 211, 153, 0.12); border-color: rgba(52, 211, 153, 0.25); }
   .status--warning { color: #fbbf24; background: rgba(251, 191, 36, 0.12); border-color: rgba(251, 191, 36, 0.3); }
   .status--critical, .status--error { color: #f87171; background: rgba(248, 113, 113, 0.12); border-color: rgba(248, 113, 113, 0.3); }
 
@@ -251,6 +227,11 @@
     justify-content: space-between;
     align-items: center;
   }
+  .switch-type-data {
+    margin-top: 25px;
+    display: flex;
+    gap: 15px;
+  }
   .project-details__flex .panel { 
     padding: 14px; 
     height: 99px;
@@ -269,7 +250,13 @@
   }
 
 
-
+.scripts-list__impact-desc {
+  margin-top: 15px;
+  font-size: 14px;
+}
+.scripts-list__domain {
+  width: 200px;
+}
   .metric-panel-wrap {
     margin-top: 15px;
     display: flex;
@@ -287,6 +274,9 @@
     color: var(--text);
   }
   .form input:focus { outline: 2px solid rgba(59,130,246,0.4); outline-offset: 0; }
+  .form__hint {
+    margin-top: 10px;
+  }
   .panel-chart__tabs{
     display: flex;
     gap: 25px;
@@ -472,3 +462,17 @@
     color: rgba(255,255,255,0.92);
     font-size: 14px;
   }
+  .form__field-wrap  {
+    position: relative;
+  }
+  .form__field-eye {
+    position: absolute;
+    cursor: pointer;
+    top: 7px;
+    right: 15px;
+    width: 27px;
+  }
+.button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

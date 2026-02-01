@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Chart from "chart.js/auto";
-import type { MetricKey } from "../../shared/types/run";
+import type { MetricKey, Metrics } from "../../shared/types/run";
 
 type ProjectChartProps = {
-  checkRun: Array<{
-    checkedAt: string;
-    metrics: Record<MetricKey, number>;
+  checkRuns: Array<{
+    finishedAt: string;
+    metrics: Metrics;
   }>;
+  metricView: "desc" | "mob";
 };
 
 const TABS: { key: MetricKey; label: string }[] = [
@@ -21,16 +22,19 @@ const METRIC_COLOR: Record<MetricKey, { stroke: string; fill: string }> = {
   cls: { stroke: "rgba(168,85,247,0.85)", fill: "rgba(168,85,247,0.16)" },
   inp: { stroke: "rgba(245,158,11,0.85)", fill: "rgba(245,158,11,0.14)" },
   ttfb: { stroke: "rgba(20,184,166,0.85)", fill: "rgba(20,184,166,0.14)" },
+  pageWeightKb: {
+    stroke: "",
+    fill: ""
+  }
 };
 
-export function ProjectChart({ checkRun }: ProjectChartProps) {
+export function ProjectChart({ checkRuns, metricView = "desc" }: ProjectChartProps) {
   const chartRef = useRef<HTMLCanvasElement>(null);
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>("lcp");
-
-  const labels = useMemo(() => checkRun.map((r) => r.checkedAt), [checkRun]);
+  const labels = useMemo(() => checkRuns.map((r) => r.finishedAt), [checkRuns]);
   const data = useMemo(
-    () => checkRun.map((r) => r.metrics[selectedMetric]),
-    [checkRun, selectedMetric]
+    () => checkRuns.map((r) => r.metrics[metricView][selectedMetric]),
+    [checkRuns, metricView, selectedMetric]
   );
 
   useEffect(() => {
@@ -39,7 +43,6 @@ export function ProjectChart({ checkRun }: ProjectChartProps) {
     if (!ctx) return;
 
     const { stroke, fill } = METRIC_COLOR[selectedMetric];
-
     const chartInstance = new Chart(ctx, {
       type: "line",
       data: {

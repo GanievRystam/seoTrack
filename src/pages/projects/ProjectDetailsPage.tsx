@@ -1,31 +1,62 @@
 ﻿import { Link, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { getCheckRunByProjectId, getProjectById } from "../../shared/storage/projectStore";
 import { ProjectChart } from "./ProjectChart";
-import type { CheckRun, MetricKey } from "../../shared/types/run";
-import { evaluateMetric } from "../../shared/lib/evaluateMetric";
+import type { CheckRun} from "../../shared/types/run";
 import { getIssues } from "../../shared/lib/metricThresholds";
 import { RecentChecks } from "./RecentChecks";
 import { PROJECT_METRICS } from "../../shared/lib/projectMetrics";
+import { fetchCheckRuns, getProject } from "../../shared/api/projects";
+
 
 export function ProjectDetailsPage() {
   const { id, historyId } = useParams();
-  const project = id ? getProjectById(id) : undefined;
-  const checkRun = id ? getCheckRunByProjectId(id) : undefined;
+  const [project, setProject] = useState<any>(undefined);
+  const [checkRuns, setCheckRuns] =  useState<any>(undefined);
+
+  useEffect(() => {
+    if (!id) return;
+    getProject(id).then(setProject).catch(() => setProject(undefined));
+    fetchCheckRuns(id).then(setCheckRuns).catch(()  => setCheckRuns(undefined))
+  }, [id]);
+
+
+  
+
+  const [metricView, setMetricView] = useState<"desc" | "mob">("desc");
+
   const currentCheckRun: CheckRun | undefined = id ? (() => {
-    if (!checkRun || checkRun.length === 0) return undefined;
+
+    if (!checkRuns || checkRuns.length === 0) return undefined;
+
     if (historyId) {
-      return checkRun.find((run: CheckRun) => run.id === historyId);
+      return checkRuns.find((run: CheckRun) => run.id === historyId);
     }
-    return checkRun.reduce((latest, current) => {
+
+    if (!Array.isArray(checkRuns) || checkRuns.length === 0) {
+      return undefined;
+    }
+
+    return checkRuns.reduce((latest, current) => {
       const getTimestamp = (run: CheckRun) => {
-        const ts = Date.parse(run.checkedAt);
-        return isNaN(ts) ? run.checkedAt : ts;
+        const ts = Date.parse(run.finishedAt);
+        return isNaN(ts) ? run.finishedAt : ts;
       };
       return getTimestamp(current) > getTimestamp(latest) ? current : latest;
-    }, checkRun[0]);
+    }, checkRuns[0]);
   })() : undefined;
+  console.log(currentCheckRun?.metrics)
+  const checkRunIssue = currentCheckRun ? getIssues(currentCheckRun.metrics[metricView]) : undefined;
 
-  const checkRunIssue = currentCheckRun ? getIssues(currentCheckRun.metrics) : undefined;
+  const metricPercents: Record<string, { good: number, betterToBeLower: boolean }> = {
+    lcp: { good: 2500, betterToBeLower: true },
+    cls: { good: 0.1, betterToBeLower: true },
+    inp: { good: 200, betterToBeLower: true },
+    ttfb: { good: 800, betterToBeLower: true },
+    seoScore: { good: 100, betterToBeLower: false }
+  };
+    const radius = 42.5;
+    const circumference = 2 * Math.PI * radius;
   if (!project) {
     return (
       <div className="page">
@@ -46,22 +77,24 @@ export function ProjectDetailsPage() {
     <>
 
       <div className="page">
-      {checkRun && checkRun.length > 1 && (
+      {checkRuns && (
         <div className="panel panel-mainText">
           <div className="page__header">
             <div>
               <h1 className="page__title">{project.name}</h1>
               <p className="page__subtitle">{project.description}</p>
             </div>
-            <span className={`status status--${project.status}`}>{project.status}</span>
           </div>
 
           <div className="project-details__meta">
-            <span className="pill">Owner: {project.owner}</span>
+            <span className="pill">Owner: {project.user.email}</span>
             <span className="pill">Open alerts: {project.alerts}</span>
-            <span className="pill">Last incident: {project.lastIncident}</span>
+            <span className="pill">Last incident: {project.lastIncidentAt}</span>
           </div>
-          
+          <div className="switch-type-data">
+            <button className="button button--secondary" type="button" aria-pressed={metricView === "desc"} onClick={() => setMetricView("desc")}>Десктоп</button>
+            <button className="button button--secondary" type="button" aria-pressed={metricView === "mob"} onClick={() => setMetricView("mob")}>Мобайл</button>
+          </div>
           <div className="project-details__flex">
             {PROJECT_METRICS.map((metric) => (
               <div className="metric-panel-wrap">
@@ -77,25 +110,46 @@ export function ProjectDetailsPage() {
                           strokeWidth="4"
                           fill="none"
                         />
-                        <circle 
-                          className="metric-panel-fill"
-                          cx="49.5"
-                          cy="49.5"
-                          r="42.5"
-                          stroke="#2778f7"
-                          strokeWidth="4"
-                          fill="none"
-                          strokeDasharray={2 * Math.PI * 42.5}
-                          strokeDashoffset='22'
-                          strokeLinecap="round"
-                          style={{
-                            transition: 'stroke-dashoffset 0.6s cubic-bezier(.25,.8,.25,1)'
-                          }}
-                          transform="rotate(-90 49.5 49.5)" // Добавлено вращение, чтобы заполнение начиналось с 12 часов
-                        />
+                        {(() => {
+                          const value = project.metrics[metricView][metric.key];
+                          const config = metricPercents[metric.key as string] || { good: 1, betterToBeLower: false };
+                          let percentFilled = 0;
+
+                          if (typeof value === "number" && config.good > 0) {
+                            if (config.betterToBeLower) {
+                              percentFilled = Math.max(0, Math.min(1, (config.good / value)));
+                            } else {
+                              percentFilled = Math.max(0, Math.min(1, value / config.good));
+                            }
+                          }
+
+                          percentFilled = Math.min(percentFilled, 1);
+
+                          const strokeDashoffset = circumference * (1 - percentFilled);
+ 
+
+                          return (
+                            <circle
+                              className="metric-panel-fill"
+                              cx="49.5"
+                              cy="49.5"
+                              r={radius}
+                              stroke="#2778f7"
+                              strokeWidth="4"
+                              fill="none"
+                              strokeDasharray={circumference}
+                              strokeDashoffset={strokeDashoffset}
+                              strokeLinecap="round"
+                              style={{
+                                transition: 'stroke-dashoffset 0.6s cubic-bezier(.25,.8,.25,1)'
+                              }}
+                              transform="rotate(-90 49.5 49.5)"
+                            />
+                          );
+                        })()}
                       </svg>
                       <div className="metric__value metric__value--large metric__value--progress">
-                        {project.metrics[metric.key] ?? "-"}
+                        {project.metrics[metricView][metric.key] ?? "-"}
                       </div>
                     </div>
                   </div>
@@ -107,13 +161,16 @@ export function ProjectDetailsPage() {
           
         </div>
         )}
-        {checkRun && historyId === undefined ? (
-          checkRun.length > 1 ? (
-            <ProjectChart checkRun={checkRun} />
+        {checkRuns && historyId === undefined ? (
+          checkRuns.length > 1 ? (
+            <ProjectChart checkRuns={checkRuns} metricView={metricView}/>
           ) : (
             <div className="panel panel--empty panel--first-run">
               <div className="panel__content">
-                <h2 className="panel__title">Сделай свой первый запуск для {project.name}</h2>
+                {checkRuns.length === 0  ? (
+                <h2 className="panel__title">Сделай свой первый запуск для {project.name}</h2> ) : (
+                  <h2 className="panel__title">Слишком мало данных для {project.name}</h2>
+                )}
                 <p className="panel__subtitle">Для отображения графика истории метрик нужно хотя бы два запуска проверки. Запустите проверку проекта, чтобы начать сбор статистики!</p>
                 <button className="button">Запустить проверку</button>
               </div>
@@ -123,7 +180,44 @@ export function ProjectDetailsPage() {
 
 
       </div>
+      {/* Список скриптов (script list) */}
+      <div className="panel">
+        <h2 className="section__header">Сторонние и внутренние скрипты</h2>
+        {Array.isArray(currentCheckRun?.scripts) && currentCheckRun.scripts.length > 0 ? (
+          <ul className="scripts-list project-details__rows">
+            {currentCheckRun.scripts.map((script: any, idx: number) => (
+              <li key={script.url ?? idx} className="scripts-list__item">
+                <div className="issues-list__item">
 
+                <div className="scripts-list__domain">
+                    <b>{script.domain}</b>
+                </div>
+                <div className="scripts-list__main issues-list__key">
+                 
+                 <span
+                   className={`scripts-list__type scripts-list__type--${script.type}`}
+                   title={script.type === "third-party" ? "Сторонний" : "Внутренний"}
+                 >
+                   {script.type === "third-party" ? "Сторонний" : "Внутренний"}
+                 </span>
+               </div>
+                <div className="scripts-list__desc">
+                  <span className="scripts-list__impact">
+                    <b>+{script.impactMs} мс</b>
+                    
+                  </span>
+                </div>
+                </div>
+                <div className="scripts-list__impact-desc">
+                      {script.impactDescription}
+                    </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="panel__empty">Нет подключённых скриптов.</div>
+        )}
+      </div>
       {checkRunIssue && (
         <div className="panel">
             <h2 className="section__header">Проблемы</h2>
@@ -150,8 +244,10 @@ export function ProjectDetailsPage() {
         </div>
       )}
       {checkRunIssue && (
-        <RecentChecks runs={checkRun} />
+        <RecentChecks runs={checkRuns} metricView={metricView}/>
       )}
     </>
   );
 }
+
+

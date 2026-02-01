@@ -1,26 +1,25 @@
 import { Outlet} from "react-router-dom";
 import { Sidebar } from "./sidebar/Sidebar";
-
+import styles from './AppLayout.module.css';
 import "./AppLayout.css";
-
 export function AppLayout() {
   return (
-    <div className="app">
+    <div className={styles.app}>
 
 
-      <main className="main">
+      <main className={styles.main}>
         <Sidebar />
-        <div className="main__content">
-          <div className="container">
+        <div className={styles.mainContent}>
+          <div className={styles.container}>
             <Outlet />
           </div>
         </div>
       </main>
 
-      <footer className="footer">
-        <div className="container footer__inner">
+      <footer className={styles.footer}>
+        <div className={`${styles.footerInner} ${styles.container}`}>
           <span>© {new Date().getFullYear()} Perf Monitor</span>
-          <span className="footer__sep">·</span>
+          <span className={styles.footerSep}>·</span>
           <span>Status: MVP</span>
         </div>
       </footer>

@@ -5,7 +5,7 @@ import type { PublicUser, StoredUser, Session } from "../types/auth";
 const USERS_KEY = "pm_users_v1";
 const SESSION_KEY = "pm_session_v1";
 
-export type AuthErrorCode =
+type AuthErrorCode =
   | "EMAIL_TAKEN"
   | "INVALID_CREDENTIALS"
   | "VALIDATION"

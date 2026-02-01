@@ -2,9 +2,10 @@ import type { CheckRun } from "../../shared/types/run";
 
 type RecentChecksProps = {
     runs?: CheckRun[];
+    metricView: "desc" | 'mob'
 };
 
-export function RecentChecks({ runs }: RecentChecksProps) {
+export function RecentChecks({ runs, metricView }: RecentChecksProps) {
     const checks = runs ?? [];
     return (
         <div>
@@ -20,23 +21,20 @@ export function RecentChecks({ runs }: RecentChecksProps) {
                 </thead>
                 <tbody>
                         {checks.map((item) => {
-                            // Формирование url было относительным (например, aurora-store/history/checkRun2)
-                            // Но роут работает как "/projects/:id/history/:historyId"
-                            // Значит нужен слэш и полный путь: "/projects/..."
                             const url = `/projects/${item.projectId}/history/${item.id}`;
                             return (
-                                <tr key={item.id + item.checkedAt}>
+                                <tr key={item.id + item.finishedAt}>
                                     <td>
                                         <a href={url} style={{ textDecoration: "underline", color: "#1a3a8b" }}>
-                                            {item.checkedAt}
+                                            {item.finishedAt}
                                         </a>
                                     </td>
                                     <td>
-                                        <span className={`status status--${item.status}`}>{item.status}</span>
+                                        <span className={`status status--${item.status?.toLocaleLowerCase()}`}>{item.status}</span>
                                     </td>
-                                    <td>{item.metrics.lcp}</td>
-                                    <td>{item.metrics.cls}</td>
-                                    <td>{item.metrics.inp}</td>
+                                    <td>{item.metrics[metricView].lcp}</td>
+                                    <td>{item.metrics[metricView].cls}</td>
+                                    <td>{item.metrics[metricView].inp}</td>
                                 </tr>
                             );
                         })}
