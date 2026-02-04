@@ -1,13 +1,21 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { login, AuthError } from "../../shared/storage/authStore";
+import { login, AuthError, type AuthErrorCode } from "../../shared/storage/authStore";
 import closeEye from '../../assets/closeEye.png'
 import openEye from '../../assets/openEye.png'
+import { useAuth } from "../../shared/auth/AuthContext";
 
+const ERROR_TEXT: Record<AuthErrorCode, string> = {
+  EMAIL_TAKEN: "Этот email уже зарегистрирован",
+  INVALID_CREDENTIALS: "Неверный email или пароль",
+  VALIDATION: "Проверьте введённые данные",
+  NO_SESSION: "Сессия истекла, войдите снова",
+  UNKNOWN: "Что-то пошло не так. Попробуйте снова.",
+};
 
 export function LoginPage() {
   const navigate = useNavigate();
-
+  const { refresh} = useAuth();
   const [email, setEmail] = useState("");
   const [typeEye, setTypeEye] = useState<'open' | 'close'>('close');
   const [emailTouched, setEmailTouched] = useState(false);
@@ -18,16 +26,17 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const canSubmit = !!email.trim() && !!password && !isSubmitting;
-  function handeSubmit (event: React.FormEvent<HTMLFormElement>) {
+  const canSubmit = !!email.trim() && !!password && !isSubmitting && !emailError;
+  async function handeSubmit (event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
-      login(email, password);
+      await login(email, password);
+      await refresh();
       navigate("/projects", { replace: true });
     } catch (e) {
-      if (e instanceof AuthError) setError(e.message);
+      if (e instanceof AuthError) setError(ERROR_TEXT[e.code] ?? e.message);
       else setError("Something went wrong. Try again.");
     } finally {
       setIsSubmitting(false);

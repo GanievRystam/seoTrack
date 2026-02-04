@@ -1,39 +1,173 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import { prisma } from "./db/prisma";
 
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? "http://localhost:5173";
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: [CLIENT_ORIGIN],
+    credentials: true,
   })
 );
 
+const SESSION_COOKIE = "pm_session";
+const JWT_SECRET = process.env.JWT_SECRET ?? "dev_secret";
+const SESSION_TTL = "7d";
+
+type AuthTokenPayload = {
+  userId: string;
+  email: string;
+};
+
+type AuthUser = {
+  id: string;
+  email: string;
+  name: string;
+};
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: AuthUser;
+    }
+  }
+}
+
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
+function setSessionCookie(res: express.Response, payload: AuthTokenPayload) {
+  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: SESSION_TTL });
+  res.cookie(SESSION_COOKIE, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: false,
+    maxAge: 1000 * 60 * 60 * 24 * 7,
+  });
+}
+
+async function getUserFromRequest(req: express.Request): Promise<AuthUser | null> {
+  const token = req.cookies?.[SESSION_COOKIE];
+  if (!token) return null;
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as AuthTokenPayload;
+    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+    if (!user) return null;
+    return { id: user.id, email: user.email, name: user.name };
+  } catch {
+    return null;
+  }
+}
+
+async function requireAuth(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) {
+  const user = await getUserFromRequest(req);
+  if (!user) return res.status(401).json({ error: "Unauthorized", code: "NO_SESSION" });
+  req.user = user;
+  next();
+}
+
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
-app.post("/projects", async (req, res) => {
-  const { userEmail, name, url } = req.body as {
-    userEmail?: string;
+app.post("/auth/register", async (req, res) => {
+  const { email, password, name } = req.body as {
+    email?: string;
+    password?: string;
+    name?: string;
+  };
+
+  if (!name || name.trim().length < 2) {
+    return res.status(400).json({ error: "Name is required", code: "VALIDATION" });
+  }
+  if (!email || !isValidEmail(email)) {
+    return res.status(400).json({ error: "Invalid email", code: "VALIDATION" });
+  }
+  if (!password || password.length < 6) {
+    return res.status(400).json({ error: "Password too short", code: "VALIDATION" });
+  }
+
+  try {
+    const normalizedEmail = email.trim().toLowerCase();
+    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (existing) {
+      return res.status(409).json({ error: "Email taken", code: "EMAIL_TAKEN" });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await prisma.user.create({
+      data: { email: normalizedEmail, name: name.trim(), passwordHash },
+    });
+
+    setSessionCookie(res, { userId: user.id, email: user.email });
+    return res.json({ id: user.id, email: user.email, name: user.name });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Internal error" });
+  }
+});
+
+app.post("/auth/login", async (req, res) => {
+  const { email, password } = req.body as { email?: string; password?: string };
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email and password required", code: "VALIDATION" });
+  }
+
+  try {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (!user) {
+      return res.status(401).json({ error: "Invalid credentials", code: "INVALID_CREDENTIALS" });
+    }
+
+    const ok = await bcrypt.compare(password, user.passwordHash);
+    if (!ok) {
+      return res.status(401).json({ error: "Invalid credentials", code: "INVALID_CREDENTIALS" });
+    }
+
+    setSessionCookie(res, { userId: user.id, email: user.email });
+    return res.json({ id: user.id, email: user.email, name: user.name });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Internal error" });
+  }
+});
+
+app.post("/auth/logout", (_req, res) => {
+  res.clearCookie(SESSION_COOKIE, { httpOnly: true, sameSite: "lax", secure: false });
+  res.json({ ok: true });
+});
+
+app.get("/auth/me", async (req, res) => {
+  const user = await getUserFromRequest(req);
+  if (!user) return res.status(401).json({ error: "Unauthorized", code: "NO_SESSION" });
+  return res.json(user);
+});
+
+app.post("/projects", requireAuth, async (req, res) => {
+  const { name, url } = req.body as {
     name?: string;
     url?: string;
   };
 
-  if (!userEmail || !name || !url) {
-    return res.status(400).json({ error: "userEmail, name, url are required" });
+  if (!name || !url) {
+    return res.status(400).json({ error: "name and url are required" });
   }
 
   try {
-    const user = await prisma.user.upsert({
-      where: { email: userEmail },
-      update: {},
-      create: { email: userEmail },
-    });
-
     const project = await prisma.project.create({
-      data: { userId: user.id, name, url },
+      data: { userId: req.user!.id, name, url },
     });
 
     return res.status(201).json(project);
@@ -43,16 +177,10 @@ app.post("/projects", async (req, res) => {
   }
 });
 
-app.get("/projects", async (req, res) => {
-  const userEmail = req.query.userEmail as string | undefined;
-  if (!userEmail) return res.status(400).json({ error: "userEmail is required" });
-
+app.get("/projects", requireAuth, async (req, res) => {
   try {
-    const user = await prisma.user.findUnique({ where: { email: userEmail } });
-    if (!user) return res.json([]);
-
     const projects = await prisma.project.findMany({
-      where: { userId: user.id },
+      where: { userId: req.user!.id },
       orderBy: { createdAt: "desc" },
     });
 
@@ -63,13 +191,13 @@ app.get("/projects", async (req, res) => {
   }
 });
 
-app.get("/projects/:id", async (req, res) => {
+app.get("/projects/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
   if (!id) return res.status(400).json({ error: "project id is required" });
 
   try {
-    const project = await prisma.project.findUnique({
-      where: { id: id },
+    const project = await prisma.project.findFirst({
+      where: { id: id, userId: req.user!.id },
       include: {
         user: true,
       },
@@ -85,14 +213,21 @@ app.get("/projects/:id", async (req, res) => {
     return res.status(500).json({ error: "Internal error" });
   }
 });
-app.get("/projects/:projectId/check-runs", async (req, res) => {
+
+app.get("/projects/:projectId/check-runs", requireAuth, async (req, res) => {
   const { projectId } = req.params;
 
   try {
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, userId: req.user!.id },
+      select: { id: true },
+    });
+    if (!project) return res.status(404).json({ error: "Project not found" });
+
     const runs = await prisma.checkRun.findMany({
       where: { projectId },
       orderBy: { createdAt: "desc" },
-      include: { metrics: true, scripts: true, },
+      include: { metrics: true, scripts: true },
     });
     const normalized = runs.map((r) => ({
       id: r.id,
@@ -116,37 +251,21 @@ app.get("/projects/:projectId/check-runs", async (req, res) => {
   }
 });
 
-
-app.get("/incidents", async (req, res) => {
-  const userEmail = req.query.userEmail as string | undefined;
-  if (!userEmail) return res.status(400).json({ error: "userEmail is required" });
-
+app.get("/incidents", requireAuth, async (req, res) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { email: userEmail },
-      select: { id: true },
-    });
-    if (!user) return res.json([]);
-
-    // Берём проекты пользователя
     const projects = await prisma.project.findMany({
-      where: { userId: user.id },
+      where: { userId: req.user!.id },
       select: { id: true },
     });
 
     const projectIds = projects.map((p) => p.id);
     if (projectIds.length === 0) return res.json([]);
 
-    // Тянем инциденты только по проектам пользователя
     const incidents = await prisma.incident.findMany({
       where: {
         projectId: { in: projectIds },
       },
-      orderBy: [
-        // Prisma не умеет сортировать по кастомному приоритету enum/text напрямую,
-        // поэтому сортируем ниже вручную
-        { createdAt: "desc" },
-      ],
+      orderBy: [{ createdAt: "desc" }],
     });
 
     const priority = (lvl: string) => (lvl === "critical" ? 2 : 1);
@@ -171,8 +290,6 @@ app.get("/incidents", async (req, res) => {
     res.status(500).json({ error: "Failed to load incidents" });
   }
 });
-
-
 
 const PORT = Number(process.env.PORT ?? 4000);
 app.listen(PORT, () => console.log(`API listening on http://localhost:${PORT}`));

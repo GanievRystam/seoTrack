@@ -23,7 +23,7 @@ export function RecentIncidents() {
   const [incidentItems, setIncidentItems] = useState<IncidentItem[]>([]);
 
   useEffect(() => {
-    fetchIncidents("demo@demo.com")
+    fetchIncidents()
       .then((data) => setIncidentItems(data))
       .catch((e) => console.error("INCIDENTS ERROR:", e));
   }, []);

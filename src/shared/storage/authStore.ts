@@ -1,15 +1,13 @@
-import { readJson, writeJson } from "./storage";
-import { uid } from "../lib/id";
-import type { PublicUser, StoredUser, Session } from "../types/auth";
+import type { PublicUser } from "../types/auth";
 
-const USERS_KEY = "pm_users_v1";
-const SESSION_KEY = "pm_session_v1";
+const API_URL = import.meta.env.VITE_API_URL as string;
 
-type AuthErrorCode =
+export type AuthErrorCode =
   | "EMAIL_TAKEN"
   | "INVALID_CREDENTIALS"
   | "VALIDATION"
-  | "NO_SESSION";
+  | "NO_SESSION"
+  | "UNKNOWN";
 
 export class AuthError extends Error {
   code: AuthErrorCode;
@@ -19,89 +17,48 @@ export class AuthError extends Error {
   }
 }
 
-function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-}
+type ApiError = {
+  error?: string;
+  code?: AuthErrorCode;
+};
 
-function validateRegister(email: string, password: string, name: string) {
-  if (!name.trim()) throw new AuthError("VALIDATION", "Name is required");
-  if (!isValidEmail(email)) throw new AuthError("VALIDATION", "Invalid email");
-  if (password.length < 6) throw new AuthError("VALIDATION", "Password must be at least 6 characters");
-}
-
-function validateLogin(email: string, password: string) {
-  if (!isValidEmail(email)) throw new AuthError("VALIDATION", "Invalid email");
-  if (!password) throw new AuthError("VALIDATION", "Password is required");
-}
-
-function toPublicUser(u: StoredUser): PublicUser {
-  const { password: _p, ...rest } = u;
-  return rest;
-}
-
-function loadUsers(): StoredUser[] {
-  return readJson<StoredUser[]>(USERS_KEY, []);
-}
-
-function saveUsers(users: StoredUser[]) {
-  writeJson(USERS_KEY, users);
-}
-
-function saveSession(userId: string) {
-  const session: Session = { userId, createdAt: new Date().toISOString() };
-  writeJson(SESSION_KEY, session);
-}
-
-export function getSessionUser(): PublicUser | null {
-  const session = readJson<Session | null>(SESSION_KEY, null);
-  if (!session) return null;
-
-  const users = loadUsers();
-  const user = users.find((u) => u.id === session.userId);
-  return user ? toPublicUser(user) : null;
-}
-
-export function logout(): void {
-  localStorage.removeItem(SESSION_KEY);
-}
-
-export function register(email: string, password: string, name: string): PublicUser {
-  validateRegister(email, password, name);
-
-  const users = loadUsers();
-  const normalizedEmail = email.trim().toLowerCase();
-
-  if (users.some((u) => u.email.toLowerCase() === normalizedEmail)) {
-    throw new AuthError("EMAIL_TAKEN", "This email is already registered");
+async function parseAuthError(res: Response): Promise<AuthError> {
+  try {
+    const data = (await res.json()) as ApiError;
+    const code = data.code ?? "UNKNOWN";
+    const message = data.error ?? "Something went wrong";
+    return new AuthError(code, message);
+  } catch {
+    return new AuthError("UNKNOWN", "Something went wrong");
   }
-
-  const user: StoredUser = {
-    id: uid("user"),
-    email: normalizedEmail,
-    name: name.trim(),
-    password,
-    createdAt: new Date().toISOString(),
-  };
-
-  users.push(user);
-  saveUsers(users);
-  saveSession(user.id);
-
-  return toPublicUser(user);
 }
 
-export function login(email: string, password: string): PublicUser {
-  validateLogin(email, password);
+async function apiPost<T>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) throw await parseAuthError(res);
+  return res.json() as Promise<T>;
+}
 
-  const users = loadUsers();
-  const normalizedEmail = email.trim().toLowerCase();
+export async function register(email: string, password: string, name: string): Promise<PublicUser> {
+  return apiPost<PublicUser>("/auth/register", { email, password, name });
+}
 
-  const user = users.find(
-    (u) => u.email.toLowerCase() === normalizedEmail && u.password === password
-  );
+export async function login(email: string, password: string): Promise<PublicUser> {
+  return apiPost<PublicUser>("/auth/login", { email, password });
+}
 
-  if (!user) throw new AuthError("INVALID_CREDENTIALS", "Wrong email or password");
+export async function logout(): Promise<void> {
+  await apiPost("/auth/logout");
+}
 
-  saveSession(user.id);
-  return toPublicUser(user);
+export async function getSessionUser(): Promise<PublicUser | null> {
+  const res = await fetch(`${API_URL}/auth/me`, { credentials: "include" });
+  if (res.status === 401) return null;
+  if (!res.ok) throw await parseAuthError(res);
+  return (await res.json()) as PublicUser;
 }

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createProject } from "../../shared/storage/projectStore";
+import { createProject } from "../../shared/api/projects";
 
 function isProbablyUrl(url: string) {
   const v = url.trim().toLowerCase();
@@ -38,17 +38,16 @@ export function ProjectAdd() {
 
         <form
           className="form"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
             setError(null);
 
             if (!name.trim()) return setError("Введите название проекта");
             if (!isProbablyUrl(url)) return setError("URL должен начинаться с http:// или https://");
 
+            setIsSubmitting(true);
             try {
-              setIsSubmitting(true);
-
-              createProject({
+              await createProject({
                 name: name.trim(),
                 url: url.trim(),
               });

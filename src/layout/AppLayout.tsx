@@ -1,28 +1,30 @@
-import { Outlet} from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import { Sidebar } from "./sidebar/Sidebar";
-import styles from './AppLayout.module.css';
+import styles from "./AppLayout.module.css";
 import "./AppLayout.css";
+import { AuthProvider } from "../shared/auth/AuthContext";
+
 export function AppLayout() {
   return (
-    <div className={styles.app}>
-
-
-      <main className={styles.main}>
-        <Sidebar />
-        <div className={styles.mainContent}>
-          <div className={styles.container}>
-            <Outlet />
+    <AuthProvider>
+      <div className={styles.app}>
+        <main className={styles.main}>
+          <Sidebar />
+          <div className={styles.mainContent}>
+            <div className={styles.container}>
+              <Outlet />
+            </div>
           </div>
-        </div>
-      </main>
+        </main>
 
-      <footer className={styles.footer}>
-        <div className={`${styles.footerInner} ${styles.container}`}>
-          <span>© {new Date().getFullYear()} Perf Monitor</span>
-          <span className={styles.footerSep}>·</span>
-          <span>Status: MVP</span>
-        </div>
-      </footer>
-    </div>
+        <footer className={styles.footer}>
+          <div className={`${styles.footerInner} ${styles.container}`}>
+            <span>В© {new Date().getFullYear()} Perf Monitor</span>
+            <span className={styles.footerSep}>В·</span>
+            <span>Status: MVP</span>
+          </div>
+        </footer>
+      </div>
+    </AuthProvider>
   );
 }

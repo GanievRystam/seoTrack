@@ -1,6 +1,5 @@
 ﻿import { Link, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { getCheckRunByProjectId, getProjectById } from "../../shared/storage/projectStore";
 import { ProjectChart } from "./ProjectChart";
 import type { CheckRun} from "../../shared/types/run";
 import { getIssues } from "../../shared/lib/metricThresholds";

@@ -3,6 +3,14 @@ import type { CheckRun } from "../types/run";
 // src/shared/api/projects.ts
 const API_URL = import.meta.env.VITE_API_URL as string;
 
+async function apiFetch(input: RequestInfo, init?: RequestInit) {
+  const res = await fetch(input, { credentials: "include", ...init });
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
+  return res;
+}
+
 export type ProjectStatus = "ok" | "warning" | "error";
 
 export type ProjectMetricKey = "lcp" | "cls" | "inp" | "ttfb" | "seoScore";
@@ -41,66 +49,38 @@ export type IncidentItem = {
   createdAt: string;      // ISO строка
 };
 
-export async function getProjects(userEmail: string): Promise<Project[]> {
-  const res = await fetch(
-    `${API_URL}/projects?userEmail=${encodeURIComponent(userEmail)}`
-  );
-
-  if (!res.ok) {
-    throw new Error(await res.text());
-  }
-
+export async function getProjects(): Promise<Project[]> {
+  const res = await apiFetch(`${API_URL}/projects`);
   return res.json();
 }
 export async function getProject(id: string): Promise<Project> {
-  const res = await fetch(`${API_URL}/projects/${encodeURIComponent(id)}`);
-  if (!res.ok) {
-    throw new Error(await res.text());
-  }
+  const res = await apiFetch(`${API_URL}/projects/${encodeURIComponent(id)}`);
   return res.json();
 }
 
-export async function fetchProjects(userEmail: string) {
-    const res = await fetch(
-      `${API_URL}/projects?userEmail=${encodeURIComponent(userEmail)}`
-    );
-  
-    if (!res.ok) throw new Error(await res.text());
-    return (await res.json()) as Project[];
-  }
+export async function fetchProjects() {
+  const res = await apiFetch(`${API_URL}/projects`);
+  return (await res.json()) as Project[];
+}
 
-export async function fetchIncidents(params:string) {
-  const res = await fetch(
-    `${API_URL}/incidents?userEmail=${encodeURIComponent('demo@demo.com')}`
-  );
-
-  if (!res.ok) {
-    throw new Error(await res.text());
-  }
-
+export async function fetchIncidents() {
+  const res = await apiFetch(`${API_URL}/incidents`);
   return res.json();
 }
 
   export async function fetchCheckRuns(projectId: string): Promise<CheckRun[]> {
-    const res = await fetch(`${API_URL}/projects/${projectId}/check-runs`);
-    if (!res.ok) throw new Error(await res.text());
+    const res = await apiFetch(`${API_URL}/projects/${projectId}/check-runs`);
     return res.json();
   }
 
 export async function createProject(input: {
-  userEmail: string;
   name: string;
   url: string;
 }): Promise<Project> {
-  const res = await fetch(`${API_URL}/projects`, {
+  const res = await apiFetch(`${API_URL}/projects`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-
-  if (!res.ok) {
-    throw new Error(await res.text());
-  }
-
   return res.json();
 }

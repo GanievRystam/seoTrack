@@ -13,7 +13,7 @@ export function ProjectsTable() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchProjects("demo@demo.com")
+    fetchProjects()
       .then((projects) => {
         setFetchedProjects(projects);
         setIsLoading(false);

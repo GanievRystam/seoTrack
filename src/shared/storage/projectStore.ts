@@ -22,19 +22,19 @@ export function getCheckRunByProjectId(projectId: string): CheckRun[] {
 
   return loadRuns().filter((run) => run.projectId === projectId);
 }
-export function listMyProjects(): Project[] {
-  const user = getSessionUser();
+export async function listMyProjects(): Promise<Project[]> {
+  const user = await getSessionUser();
   if (!user) return [];
   return loadAll().filter((p) => p.owner === user.id);
 }
-export function getProjectById(id: string): Project | undefined {
-  const userProjects = listMyProjects();
+export async function getProjectById(id: string): Promise<Project | undefined> {
+  const userProjects = await listMyProjects();
   return userProjects.find((p) => p.id === id);
 }
 
 
-export function createProject(input: { name: string; url: string }): Project {
-  const user = getSessionUser();
+export async function createProject(input: { name: string; url: string }): Promise<Project> {
+  const user = await getSessionUser();
   if (!user) throw new Error("No session");
 
   const all = loadAll();

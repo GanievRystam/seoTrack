@@ -1,10 +1,21 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { register, AuthError } from "../../shared/storage/authStore";
+import { register, AuthError, type AuthErrorCode } from "../../shared/storage/authStore";
+import { useAuth } from "../../shared/auth/AuthContext";
 import closeEye from '../../assets/closeEye.png'
 import openEye from '../../assets/openEye.png'
+
+const ERROR_TEXT: Record<AuthErrorCode, string> = {
+  EMAIL_TAKEN: "Этот email уже зарегистрирован",
+  INVALID_CREDENTIALS: "Неверный email или пароль",
+  VALIDATION: "Проверьте введённые данные",
+  NO_SESSION: "Сессия истекла, войдите снова",
+  UNKNOWN: "Что-то пошло не так. Попробуйте снова.",
+};
+
 export function RegisterPage() {
   const navigate = useNavigate();
+  const { refresh } = useAuth();
 
   const [name, setName] = useState("");
   const [nameTouched, setNameTouched] = useState(false);
@@ -23,22 +34,28 @@ export function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const canSubmit = !!name.trim() && !!email.trim() && !!password && !isSubmitting;
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  const canSubmit =
+    !!name.trim() &&
+    !!email.trim() &&
+    !!password &&
+    !isSubmitting &&
+    !nameError &&
+    !emailError &&
+    !passwordError;
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    console.log('asdfsadfasda');
     setNameTouched(true);
     setEmailTouched(true);
     setPasswordTouched(true); 
 
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
-      register(email, password, name);
-
+      await register(email, password, name);
+      await refresh();
       navigate("/projects", { replace: true });
     } catch (e) {
-      if (e instanceof AuthError) setError(e.message);
+      if (e instanceof AuthError) setError(ERROR_TEXT[e.code] ?? e.message);
       else setError("Something went wrong. Try again.");
     } finally {
       setIsSubmitting(false);
@@ -56,10 +73,7 @@ export function RegisterPage() {
           </div>
         </div>
 
-        <form
-          className="form"
-          onSubmit={(event) => handleSubmit(event)}
-        >
+        <form className="form" onSubmit={handleSubmit}>
           <label className="form__field">
             <span>Name</span>
             <div className="form__field-wrap">
@@ -126,6 +140,11 @@ export function RegisterPage() {
             )}
             </div>
           </label>
+          {error && (
+            <div className="form__error" role="alert">
+              {error}
+            </div>
+          )}
           <button formNoValidate type="submit" className="button button--primary" disabled={!canSubmit}>
             {isSubmitting ? "Creating..." : "Create account"}
           </button>
