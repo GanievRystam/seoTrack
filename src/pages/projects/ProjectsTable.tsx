@@ -2,27 +2,19 @@
 import { PROJECT_METRICS } from "../../shared/lib/projectMetrics";
 import styles from './ProjectTable.module.css'
 import { Link } from "react-router-dom";
-import { fetchProjects } from "../../shared/api/projects";
-import { useEffect, useState } from "react";
-import type { Project } from "../../shared/types/project";
-import loading from '../../assets/loader.gif'
+import loading from '../../assets/loader.gif';
+import { useGetProjectsQuery } from "../../entities/project/api/projectsApi";
 export function ProjectsTable() {
+  const { data, isLoading, error} = useGetProjectsQuery();
+  const fetchedProjects = data ?? [];
+  const errorText =
+  error && "status" in error
+    ? `Ошибка: ${error.status}`
+    : error
+      ? "Неизвестная ошибка"
+      : null;
 
-  const [fetchedProjects, setFetchedProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchProjects()
-      .then((projects) => {
-        setFetchedProjects(projects);
-        setIsLoading(false);
-      })
-      .catch((err) => {
-        setError("Произошла ошибка при загрузке проектов. Попробуйте позже.");
-        setIsLoading(false);
-      });
-  }, []);
 
     return (
       isLoading ? (
@@ -32,7 +24,7 @@ export function ProjectsTable() {
         </div>
       ) : error ? (
         <div className="table-container">
-          <p className="muted">{error}</p>
+          {errorText && <p className="muted">{errorText}</p>}
         </div>
       ) : !!fetchedProjects.length ? (
         <table className={styles.table}>
@@ -65,7 +57,17 @@ export function ProjectsTable() {
                  </td> */}
                  <td>{project.alerts}</td>
                  <td>
-                   <span className="muted">{project.lastIncident}</span>
+                   <span className="muted">
+                     {project.lastIncidentAt
+                       ? new Date(project.lastIncidentAt).toLocaleString("ru-RU", {
+                           day: "2-digit",
+                           month: "2-digit",
+                           year: "2-digit",
+                           hour: "2-digit",
+                           minute: "2-digit",
+                         })
+                       : "-"}
+                   </span>
                  </td>
                  {PROJECT_METRICS.map((metric) => (
                    <td key={metric.key}>

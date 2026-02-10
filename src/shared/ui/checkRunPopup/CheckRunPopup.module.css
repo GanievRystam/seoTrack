@@ -1,0 +1,141 @@
+.checkRunPopup {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1200;
+    min-width: 320px;
+    max-width: 400px;
+    animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  .checkRunPopup__overlay {
+    display: none; /* Убираем оверлей для бокового уведомления */
+  }
+  
+  .checkRunPopup__window {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 
+                0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    position: relative;
+    border-left: 4px solid #2675e6;
+  }
+  
+  .checkRunPopup__close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: #f3f4f6;
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.15s;
+    line-height: 1;
+  }
+  
+  .checkRunPopup__close:hover {
+    background: #e5e7eb;
+    color: #374151;
+  }
+  
+  .checkRunPopup__header {
+    margin-bottom: 12px;
+    padding-right: 32px; /* Даем место для кнопки закрытия */
+  }
+  
+  .checkRunPopup__title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+    color: #111827;
+  }
+  
+  .checkRunPopup__subtitle {
+    margin-top: 6px;
+    font-size: 14px;
+    color: #6b7280;
+    line-height: 1.4;
+  }
+  
+  .checkRunPopup__content {
+    margin-bottom: 16px;
+    min-height: 20px;
+    font-size: 14px;
+    color: #4b5563;
+  }
+  
+  .checkRunPopup__actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+  
+  .button {
+    background: #2675e6;
+    color: #fff;
+    font-weight: 500;
+    font-size: 14px;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 16px;
+    cursor: pointer;
+    transition: background 0.17s;
+  }
+  
+  .button:hover,
+  .button:focus {
+    background: #165fcc;
+  }
+  
+  .buttonSecondary {
+    background: #f3f4f6;
+    color: #374151;
+  }
+  
+  .buttonSecondary:hover,
+  .buttonSecondary:focus {
+    background: #e5e7eb;
+  }
+  
+  /* Для состояний уведомления */
+  .checkRunPopup--success .checkRunPopup__window {
+    border-left-color: #10b981;
+  }
+  
+  .checkRunPopup--error .checkRunPopup__window {
+    border-left-color: #ef4444;
+  }
+  
+  .checkRunPopup--warning .checkRunPopup__window {
+    border-left-color: #f59e0b;
+  }
+  
+  /* Для мобильных устройств */
+  @media (max-width: 640px) {
+    .checkRunPopup {
+      top: 10px;
+      right: 10px;
+      left: 10px;
+      min-width: auto;
+      max-width: none;
+    }
+  }

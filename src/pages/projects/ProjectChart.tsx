@@ -31,10 +31,26 @@ const METRIC_COLOR: Record<MetricKey, { stroke: string; fill: string }> = {
 export function ProjectChart({ checkRuns, metricView = "desc" }: ProjectChartProps) {
   const chartRef = useRef<HTMLCanvasElement>(null);
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>("lcp");
-  const labels = useMemo(() => checkRuns.map((r) => r.finishedAt), [checkRuns]);
+  const sortedRuns = useMemo(
+    () =>
+      [...checkRuns].sort(
+        (a, b) => new Date(a.finishedAt).getTime() - new Date(b.finishedAt).getTime()
+      ),
+    [checkRuns]
+  );
+  const labels = useMemo(
+    () =>
+      sortedRuns.map((r) => {
+        const d = new Date(r.finishedAt);
+        return `${d
+          .toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "2-digit" })} ${d
+          .toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`;
+      }),
+    [sortedRuns]
+  );
   const data = useMemo(
-    () => checkRuns.map((r) => r.metrics[metricView][selectedMetric]),
-    [checkRuns, metricView, selectedMetric]
+    () => sortedRuns.map((r) => r.metrics[metricView][selectedMetric]),
+    [sortedRuns, metricView, selectedMetric]
   );
 
   useEffect(() => {

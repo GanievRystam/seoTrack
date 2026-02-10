@@ -20,8 +20,13 @@ export type Project = {
     status: ProjectStatus;
     description: string;
     alerts: number;
-    lastIncident: string;
-    owner: string;
+    lastIncidentAt: string;
+    user: {
+      id: string,
+      email: string,
+      createAt:string,
+      name: string
+    };
     metrics: Metrics;
     scripts:ProjectScript[]
   };

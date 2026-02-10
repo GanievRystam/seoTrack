@@ -4,6 +4,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import cron from "node-cron";
 import { prisma } from "./db/prisma";
 
 const app = express();
@@ -21,6 +22,7 @@ app.use(
 const SESSION_COOKIE = "pm_session";
 const JWT_SECRET = process.env.JWT_SECRET ?? "dev_secret";
 const SESSION_TTL = "7d";
+const PAGESPEED_API_KEY = process.env.PAGESPEED_API_KEY ?? "";
 
 type AuthTokenPayload = {
   userId: string;
@@ -53,6 +55,134 @@ function setSessionCookie(res: express.Response, payload: AuthTokenPayload) {
     secure: false,
     maxAge: 1000 * 60 * 60 * 24 * 7,
   });
+}
+
+type AuditKey =
+  | "largest-contentful-paint"
+  | "cumulative-layout-shift"
+  | "interaction-to-next-paint"
+  | "server-response-time";
+
+type Strategy = "mobile" | "desktop";
+
+function pickMetric(audits: Record<string, any>, key: AuditKey): number {
+  const v = audits?.[key]?.numericValue;
+  return typeof v === "number" ? Math.round(v) : 0;
+}
+
+function normalizeMetrics(lhr: any) {
+  const audits = lhr?.audits ?? {};
+  const scoreRaw = lhr?.categories?.performance?.score;
+  const performanceScore = typeof scoreRaw === "number" ? Math.round(Number((scoreRaw * 100).toFixed(2))) : 0;
+
+  return {
+    lcp: pickMetric(audits, "largest-contentful-paint"),
+    cls: pickMetric(audits, "cumulative-layout-shift"),
+    inp: pickMetric(audits, "interaction-to-next-paint"),
+    ttfb: pickMetric(audits, "server-response-time"),
+    seoScore: performanceScore,
+  };
+}
+
+function countAlerts(metrics: { lcp: number; cls: number; inp: number; ttfb: number }) {
+  let alerts = 0;
+  if (metrics.lcp > 4000) alerts += 1;
+  if (metrics.cls > 0.25) alerts += 1;
+  if (metrics.inp > 500) alerts += 1;
+  if (metrics.ttfb > 1800) alerts += 1;
+  return alerts;
+}
+
+async function runPageSpeed(url: string, strategy: Strategy) {
+  if (!PAGESPEED_API_KEY) throw new Error("PAGESPEED_API_KEY is not set");
+  const endpoint = new URL("https://www.googleapis.com/pagespeedonline/v5/runPagespeed");
+  endpoint.searchParams.set("url", url);
+  endpoint.searchParams.set("strategy", strategy);
+  endpoint.searchParams.set("key", PAGESPEED_API_KEY);
+
+  const res = await fetch(endpoint);
+  
+  if (!res.ok) {
+    throw new Error(`PageSpeed error: ${res.status}`);
+  }
+  return res.json();
+}
+
+const sseClients = new Map<string, Set<express.Response>>();
+
+function publishSse(projectId: string, payload: unknown) {
+  const clients = sseClients.get(projectId);
+  if (!clients) return;
+  const data = `event: check-run\ndata: ${JSON.stringify(payload)}\n\n`;
+  for (const res of clients) {
+    res.write(data);
+  }
+}
+
+async function runCheckForProject(project: { id: string; url: string }, runId: string) {
+  try {
+    const [mobileJson, desktopJson] = await Promise.all([
+      runPageSpeed(project.url, "mobile"),
+      runPageSpeed(project.url, "desktop"),
+    ]);
+
+    const mobLhr = mobileJson?.lighthouseResult;
+    const descLhr = desktopJson?.lighthouseResult;
+    const mob = normalizeMetrics(mobLhr);
+    const desc = normalizeMetrics(descLhr);
+
+    const rawJson = {
+      mob,
+      desc,
+      rawJson: {
+        mobile: mob,
+        desktop: desc,
+      },
+    };
+    await prisma.metricSnapshot.create({
+      data: {
+        checkRunId: runId,
+        rawJson,
+      },
+    });
+
+    const finishedAt = new Date();
+    await prisma.checkRun.update({
+      where: { id: runId },
+      data: { status: "SUCCESS", finishedAt },
+    });
+
+    const totalAlerts = countAlerts(mob) + countAlerts(desc);
+    await prisma.project.update({
+      where: { id: project.id },
+      data: {
+        metrics: { mob, desc },
+        alerts: totalAlerts,
+        lastIncidentAt: totalAlerts > 0 ? finishedAt : null,
+      },
+    });
+
+    publishSse(project.id, { runId, status: "SUCCESS", finishedAt });
+  } catch (e: any) {
+    await prisma.checkRun.update({
+      where: { id: runId },
+      data: { status: "FAIL", finishedAt: new Date(), error: String(e?.message ?? e) },
+    });
+    publishSse(project.id, { runId, status: "FAIL" });
+  }
+}
+
+async function enqueueCheckRun(project: { id: string; url: string }) {
+  const run = await prisma.checkRun.create({
+    data: {
+      projectId: project.id,
+      status: "RUNNING",
+      startedAt: new Date(),
+    },
+  });
+
+  void runCheckForProject(project, run.id);
+  return run;
 }
 
 async function getUserFromRequest(req: express.Request): Promise<AuthUser | null> {
@@ -191,6 +321,24 @@ app.get("/projects", requireAuth, async (req, res) => {
   }
 });
 
+app.post("/projects/:id/check-runs", requireAuth, async (req, res) => {
+  const { id } = req.params;
+  if (!id) return res.status(400).json({ error: "project id is required" });
+
+  try {
+    const project = await prisma.project.findFirst({
+      where: { id, userId: req.user!.id },
+    });
+    if (!project) return res.status(404).json({ error: "Project not found" });
+
+    const run = await enqueueCheckRun({ id: project.id, url: project.url });
+    res.status(202).json({ ok: true, runId: run.id });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Internal error" });
+  }
+});
+
 app.get("/projects/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
   if (!id) return res.status(400).json({ error: "project id is required" });
@@ -212,6 +360,31 @@ app.get("/projects/:id", requireAuth, async (req, res) => {
     console.error(e);
     return res.status(500).json({ error: "Internal error" });
   }
+});
+
+app.get("/projects/:id/check-runs/stream", requireAuth, async (req, res) => {
+  const { id } = req.params;
+  if (!id) return res.status(400).end();
+
+  const project = await prisma.project.findFirst({
+    where: { id, userId: req.user!.id },
+    select: { id: true },
+  });
+  if (!project) return res.status(404).end();
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  const set = sseClients.get(id) ?? new Set<express.Response>();
+  set.add(res);
+  sseClients.set(id, set);
+
+  req.on("close", () => {
+    set.delete(res);
+    if (set.size === 0) sseClients.delete(id);
+  });
 });
 
 app.get("/projects/:projectId/check-runs", requireAuth, async (req, res) => {
@@ -248,6 +421,41 @@ app.get("/projects/:projectId/check-runs", requireAuth, async (req, res) => {
       error: "Failed to load check runs",
       details: e?.message ?? String(e),
     });
+  }
+});
+
+app.get("/check-runs/active", requireAuth, async (req, res) => {
+  try {
+    const projects = await prisma.project.findMany({
+      where: { userId: req.user!.id },
+      select: { id: true },
+    });
+    const projectIds = projects.map((p) => p.id);
+    if (projectIds.length === 0) return res.json(null);
+
+    const latestRun = await prisma.checkRun.findFirst({
+      where: {
+        projectId: { in: projectIds },
+      },
+      orderBy: { createdAt: "desc" },
+      include: { project: { select: { name: true } } },
+    });
+
+    if (!latestRun) return res.json(null);
+    const active = latestRun.status === "QUEUED" || latestRun.status === "RUNNING";
+
+    return res.json({
+      runId: latestRun.id,
+      projectId: latestRun.projectId,
+      projectName: latestRun.project?.name ?? "",
+      status: latestRun.status,
+      active,
+      startedAt: latestRun.startedAt,
+      finishedAt: latestRun.finishedAt,
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Failed to load active check runs" });
   }
 });
 
@@ -288,6 +496,28 @@ app.get("/incidents", requireAuth, async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: "Failed to load incidents" });
+  }
+});
+
+cron.schedule("0 * * * *", async () => {
+  try {
+    const projects = await prisma.project.findMany({
+      select: { id: true, url: true },
+    });
+    console.log(projects)
+    for (const project of projects) {
+      const active = await prisma.checkRun.findFirst({
+        where: {
+          projectId: project.id,
+          status: { in: ["QUEUED", "RUNNING"] },
+        },
+        select: { id: true },
+      });
+      if (active) continue;
+      await enqueueCheckRun(project);
+    }
+  } catch (e) {
+    console.error("CRON CHECK RUN ERROR:", e);
   }
 });
 

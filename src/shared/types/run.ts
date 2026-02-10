@@ -1,4 +1,4 @@
-export type RunStatus = "ok" | "warning" | "critical";
+export type RunStatus = "ok" | "warning" | "critical" | "RUNNING";
 
 export type MetricKey = "lcp" | "cls" | "inp" | "ttfb" | "pageWeightKb";
 
@@ -24,6 +24,7 @@ export type ScriptInfo = {
 export type CheckRun = {
   id: string;
   projectId: string;
+  createdAt:string;
   finishedAt: string;
   status: RunStatus;
   metrics: Metrics;

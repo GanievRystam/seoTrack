@@ -4,6 +4,7 @@ import type { CheckRun } from "../types/run";
 const API_URL = import.meta.env.VITE_API_URL as string;
 
 async function apiFetch(input: RequestInfo, init?: RequestInit) {
+
   const res = await fetch(input, { credentials: "include", ...init });
   if (!res.ok) {
     throw new Error(await res.text());
@@ -23,8 +24,8 @@ export type ProjectScript = {
   url: string;
   domain: string;
   type: string;
-  impactMs: number; // Насколько сильно замедляет, в миллисекундах
-  impactDescription: string; // Описание влияния
+  impactMs: number;
+  impactDescription: string; 
 };
 export type Project = {
     id: string;
@@ -43,10 +44,10 @@ export type IncidentItem = {
   id: string;
   projectId: string | null;
   projectName: string;
-  metric: string;         // можно потом сделать union: "TTFB" | "LCP" | ...
+  metric: string;
   level: IncidentLevel;
   timeText: string;
-  createdAt: string;      // ISO строка
+  createdAt: string;
 };
 
 export async function getProjects(): Promise<Project[]> {
@@ -68,10 +69,33 @@ export async function fetchIncidents() {
   return res.json();
 }
 
-  export async function fetchCheckRuns(projectId: string): Promise<CheckRun[]> {
+export async function fetchCheckRuns(projectId: string): Promise<CheckRun[]> {
     const res = await apiFetch(`${API_URL}/projects/${projectId}/check-runs`);
     return res.json();
   }
+
+export async function startCheckRun(projectId: string): Promise<{ ok: boolean; runId: string }> {
+  const res = await apiFetch(`${API_URL}/projects/${projectId}/check-runs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  return res.json();
+}
+
+export type ActiveCheckRun = {
+  runId: string;
+  projectId: string;
+  projectName: string;
+  status: "QUEUED" | "RUNNING" | "SUCCESS" | "FAIL";
+  active: boolean;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+} | null;
+
+export async function fetchActiveCheckRun(): Promise<ActiveCheckRun> {
+  const res = await apiFetch(`${API_URL}/check-runs/active`);
+  return res.json();
+}
 
 export async function createProject(input: {
   name: string;

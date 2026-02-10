@@ -22,10 +22,12 @@ export function RegisterPage() {
   const [typeEye, setTypeEye]  = useState<'open' | 'close'>('close')
   const nameError = !nameTouched
   ? null : name.trim().length === 0 ? "Name is required" : name.trim().length < 3 ? "Name must be at least 3 characters" : null;
+  
   const [email, setEmail] = useState("");
   const [emailTouched, setEmailTouched] = useState(false);
   const emailError = !emailTouched
   ? null : email.trim().length === 0 ? "Email is required" : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ? "Invalid email format" : null;
+  
   const [password, setPassword] = useState("");
   const [passwordTouched, setPasswordTouched] = useState(false);
   const passwordError = !passwordTouched
@@ -42,6 +44,7 @@ export function RegisterPage() {
     !nameError &&
     !emailError &&
     !passwordError;
+    
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
