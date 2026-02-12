@@ -12,13 +12,6 @@ type IncidentItem = {
   timeText: string;
 };
 
-
-const DEFAULT_ITEMS: IncidentItem[] = [
-  { id: "1", projectName: "Orion B2B Portal", metric: "TTFB", level: "critical", timeText: "43 minutes ago" },
-  { id: "2", projectName: "Aurora Storefront", metric: "CLS", level: "warning", timeText: "2 hours ago" },
-  { id: "3", projectName: "Nova Mobile", metric: "INP", level: "warning", timeText: "6 days ago" },
-];
-
 export function RecentIncidents() {
   const [incidentItems, setIncidentItems] = useState<IncidentItem[]>([]);
 

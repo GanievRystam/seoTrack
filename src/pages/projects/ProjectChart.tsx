@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Chart from "chart.js/auto";
-import type { MetricKey, Metrics } from "../../shared/types/run";
+import type { ProjectMetricKey, Metrics } from "../../shared/types/metrics";
 
 type ProjectChartProps = {
   checkRuns: Array<{
@@ -10,19 +10,19 @@ type ProjectChartProps = {
   metricView: "desc" | "mob";
 };
 
-const TABS: { key: MetricKey; label: string }[] = [
+const TABS: { key: ProjectMetricKey; label: string }[] = [
   { key: "lcp", label: "LCP" },
   { key: "cls", label: "CLS" },
   { key: "inp", label: "INP" },
   { key: "ttfb", label: "TTFB" },
 ];
 
-const METRIC_COLOR: Record<MetricKey, { stroke: string; fill: string }> = {
+const METRIC_COLOR: Record<ProjectMetricKey, { stroke: string; fill: string }> = {
   lcp: { stroke: "rgba(59,130,246,0.85)", fill: "rgba(59,130,246,0.16)" },
   cls: { stroke: "rgba(168,85,247,0.85)", fill: "rgba(168,85,247,0.16)" },
   inp: { stroke: "rgba(245,158,11,0.85)", fill: "rgba(245,158,11,0.14)" },
   ttfb: { stroke: "rgba(20,184,166,0.85)", fill: "rgba(20,184,166,0.14)" },
-  pageWeightKb: {
+  seoScore: {
     stroke: "",
     fill: ""
   }
@@ -30,7 +30,7 @@ const METRIC_COLOR: Record<MetricKey, { stroke: string; fill: string }> = {
 
 export function ProjectChart({ checkRuns, metricView = "desc" }: ProjectChartProps) {
   const chartRef = useRef<HTMLCanvasElement>(null);
-  const [selectedMetric, setSelectedMetric] = useState<MetricKey>("lcp");
+  const [selectedMetric, setSelectedMetric] = useState<ProjectMetricKey>("lcp");
   const sortedRuns = useMemo(
     () =>
       [...checkRuns].sort(

@@ -1,6 +1,6 @@
+import type { Metrics } from "../types/metrics";
 import type { CheckRun } from "../types/run";
 
-// src/shared/api/projects.ts
 const API_URL = import.meta.env.VITE_API_URL as string;
 
 async function apiFetch(input: RequestInfo, init?: RequestInit) {
@@ -14,12 +14,7 @@ async function apiFetch(input: RequestInfo, init?: RequestInit) {
 
 export type ProjectStatus = "ok" | "warning" | "error";
 
-export type ProjectMetricKey = "lcp" | "cls" | "inp" | "ttfb" | "seoScore";
 
-export type Metrics = {
-  mob: Record<ProjectMetricKey, number>;
-  desc: Record<ProjectMetricKey, number>;
-};
 export type ProjectScript = {
   url: string;
   domain: string;

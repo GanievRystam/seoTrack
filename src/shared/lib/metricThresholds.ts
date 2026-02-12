@@ -1,4 +1,4 @@
-import type { MetricKey } from "../types/run";
+import type { ProjectMetricKey } from "../types/metrics";
 
 import { evaluateMetric } from "./evaluateMetric";
 export type MetricLevel = "good" | "warning" | "critical";
@@ -6,24 +6,24 @@ type Threshold = {
     good: number;
     warning: number;
 }
-export const METRIC_THRESHOLDS: Record<MetricKey, Threshold> = {
+export const METRIC_THRESHOLDS: Record<ProjectMetricKey, Threshold> = {
     lcp: { good: 2500, warning: 4000 },
     cls: { good: 0.1, warning: 0.25 },
     inp: { good: 200, warning: 500 },
     ttfb: { good: 800, warning: 1800 },
-    pageWeightKb: { good: 1000, warning: 2000 },
+    seoScore: { good: 100, warning: 75 },
   };
 
 
 export type Issue = {
-  key: MetricKey;
+  key: ProjectMetricKey;
   level: "warning" | "critical";
   value: number;
-  threshold: number; // warning threshold для warning, иначе warning threshold? (см. ниже)
+  threshold: number;
 };
 
-export function getIssues(metrics: Record<MetricKey, number>): Issue[] {
-  const keys = Object.keys(metrics) as MetricKey[];
+export function getIssues(metrics: Record<ProjectMetricKey, number>): Issue[] {
+  const keys = Object.keys(metrics) as ProjectMetricKey[];
     
   return keys
     .map((key) => {

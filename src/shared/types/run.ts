@@ -1,12 +1,7 @@
-export type RunStatus = "ok" | "warning" | "critical" | "RUNNING";
+import type {Metrics} from  './metrics'
+export type RunStatus = "ok" | "warning" | "critical" | "RUNNING" | "QUEUED" | "FAIL";
 
-export type MetricKey = "lcp" | "cls" | "inp" | "ttfb" | "pageWeightKb";
 
-export type Metrics = {
-  rawJson: any;
-  mob: Record<MetricKey, number>;
-  desc: Record<MetricKey, number>;
-};
 export type ScriptChange =
   | { type: "added"; src: string }
   | { type: "removed"; src: string }

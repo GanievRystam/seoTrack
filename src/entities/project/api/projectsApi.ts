@@ -21,7 +21,7 @@ export const projectsApi = baseApi.injectEndpoints({
         url: `/projects/${projectId}/check-runs`,
         method: "POST",
       }),
-      invalidatesTags: ["CheckRuns"],
+      invalidatesTags: ["CheckRuns", "Projects"],
     }),
   }),
 });

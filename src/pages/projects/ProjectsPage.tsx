@@ -12,7 +12,7 @@ export function ProjectsPage() {
         <ProjectsTable />
       </div>
       
-      {/* <RecentIncidents/> */}
+      <RecentIncidents/>
     </div>
   );
 }

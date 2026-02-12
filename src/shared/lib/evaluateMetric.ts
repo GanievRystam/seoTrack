@@ -1,8 +1,8 @@
-import type { MetricKey } from "../types/run";
+import type { ProjectMetricKey } from "../types/metrics";
 import { METRIC_THRESHOLDS, type MetricLevel } from "./metricThresholds";
 
 export function evaluateMetric(
-  key: MetricKey,
+  key: ProjectMetricKey,
   value: number
 ): MetricLevel {
   const t = METRIC_THRESHOLDS;

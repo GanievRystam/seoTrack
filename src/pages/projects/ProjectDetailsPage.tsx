@@ -5,23 +5,21 @@ import type { CheckRun } from "../../shared/types/run";
 import { getIssues } from "../../shared/lib/metricThresholds";
 import { RecentChecks } from "./RecentChecks";
 import { PROJECT_METRICS } from "../../shared/lib/projectMetrics";
+import loading from '../../assets/loader.gif';
 import { useGetProjectQuery, useGetCheckRunsQuery, useStartCheckRunMutation } from "../../entities/project/api/projectsApi";
+import type { ProjectMetricKey } from "../../shared/types/metrics";
 export function ProjectDetailsPage() {
   const { id, historyId } = useParams();
-  const [startCheckRun] = useStartCheckRunMutation();
+  const [startCheckRun, {error: startCheckRunError}] = useStartCheckRunMutation();
   const {
     data: projectData,
     error: projectError,
     isLoading: isProjectLoading,
-    isFetching: isProjectFetching,
   } = useGetProjectQuery(id as string, { skip: !id });
 
   const {
     data: checkRunsData,
-    error: checkRunsError,
-    refetch: checkRunsRefetch,
-    isLoading: isCheckRunsLoading,
-    isFetching: isCheckRunsFetching,
+    error: checkRunsError
   } = useGetCheckRunsQuery(id as string, { skip: !id });
 
   const project = projectData;
@@ -59,7 +57,7 @@ export function ProjectDetailsPage() {
 
   const checkRunIssue =
     currentCheckRun && safeCurrentMetrics
-      ? getIssues(safeCurrentMetrics)
+      ? getIssues(safeCurrentMetrics as Record<ProjectMetricKey, number>)
       : undefined;
 
   const chartRuns =
@@ -77,28 +75,38 @@ export function ProjectDetailsPage() {
 
   const radius = 42.5;
   const circumference = 2 * Math.PI * radius;
+  const safeProjectMetrics: Partial<Record<ProjectMetricKey, number>> = project?.metrics?.[metricView] ?? {};
 
-  // Defensive: for metrics panel, allow for empty/undefined metrics in project/selected run
-  const safeProjectMetrics =
-    project && project.metrics && typeof project.metrics === "object"
-      ? project.metrics[metricView] || {}
-      : {};
-
+  if(isProjectLoading) {
+    return (
+      <div className="table-container">
+      <img src={loading} alt="Загрузка" />
+      <p className="muted">Загрузка проектов...</p>
+    </div>
+    )
+  }
   if (!project) {
     return (
       <div className="page">
         <div className="panel panel-mainText">
           <div className="page__header">
-            <h1 className="page__title">Project not found</h1>
+            
+          {checkRunsError || projectError ? (
+            <h1 className="page__title">
+              {"Что-то пошло не так"}
+            </h1>
+          ) : (
+            <h1 className="page__title">Такого проекта не существует</h1>
+          )}
           </div>
-          <p className="page__subtitle">The requested project could not be located.</p>
+          <p className="page__subtitle">Если  проблема на нашей стороне сообщите  пожалуйста  об   этом в техническую поддержку</p>
           <Link to="/projects" className="button button--primary">
-            Back to projects
+            Вернуться  к другим проектам
           </Link>
         </div>
       </div>
     );
-  }
+  } 
 
   return (
     <>
@@ -129,6 +137,8 @@ export function ProjectDetailsPage() {
                   ? "Запускаем..."
                   : isPending
                   ? "Ожидайте"
+                  :  startCheckRunError ?
+                  "Произошла  ошибка"
                   : "Запустить проверку"}
               </button>
             </div>
@@ -169,8 +179,7 @@ export function ProjectDetailsPage() {
             </div>
             <div className="project-details__flex">
               {PROJECT_METRICS.map((metric) => {
-                // Defensive: get for each metric value from safeProjectMetrics
-                const value = safeProjectMetrics?.[metric.key];
+                const value = safeProjectMetrics[metric.key];
                 const config =
                   metricPercents[metric.key as string] || {
                     good: 1,
@@ -282,8 +291,10 @@ export function ProjectDetailsPage() {
       </div>
       {/* Список скриптов (script list) */}
       <div className="panel">
+        
+      {Array.isArray(currentCheckRun?.scripts) && currentCheckRun.scripts.length > 0 ? (
+        <>
         <h2 className="section__header">Сторонние и внутренние скрипты</h2>
-        {Array.isArray(currentCheckRun?.scripts) && currentCheckRun.scripts.length > 0 ? (
           <ul className="scripts-list project-details__rows">
             {currentCheckRun.scripts.map((script: any, idx: number) => (
               <li key={script.url ?? idx} className="scripts-list__item">
@@ -313,6 +324,7 @@ export function ProjectDetailsPage() {
               </li>
             ))}
           </ul>
+          </>
         ) : (
           <div className="panel__empty">Нет подключённых скриптов.</div>
         )}

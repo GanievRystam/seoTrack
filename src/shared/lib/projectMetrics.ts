@@ -1,4 +1,4 @@
-import type { ProjectMetricKey } from "../types/project";
+import type { ProjectMetricKey } from "../types/metrics";
 
 export type ProjectMetricConfig = {
   key: ProjectMetricKey;
