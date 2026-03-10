@@ -86,6 +86,19 @@ type StoredAdditionalPage = {
   scripts: PageScript[];
 };
 
+type NormalizedCheckRun = {
+  id: string;
+  projectId: string;
+  status: string;
+  createdAt: Date;
+  startedAt: Date | null;
+  finishedAt: Date | null;
+  error: string | null;
+  metrics: PageMetricSnapshot;
+  scripts: PageScript[];
+  additionalPages: StoredAdditionalPage[];
+};
+
 declare module "express-serve-static-core" {
   interface Request {
     user?: AuthUser;
@@ -635,7 +648,19 @@ app.get("/projects", requireAuth, async (req, res) => {
       orderBy: { createdAt: "desc" },
     });
 
-    return res.json(projects.map((project) => serializeProject(project)));
+    return res.json(projects.map((project: {
+      id: string;
+      name: string;
+      url: string;
+      description: string | null;
+      alerts: number;
+      lastIncidentAt: Date | null;
+      metrics: unknown;
+      additionalPages: unknown;
+      checkFrequency: string;
+      userId: string;
+      createdAt: Date;
+    }) => serializeProject(project)));
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: "Internal error" });
@@ -728,7 +753,17 @@ app.get("/projects/:projectId/check-runs", requireAuth, async (req, res) => {
       orderBy: { createdAt: "desc" },
       include: { metrics: true, scripts: true, project: false },
     });
-    const normalized = runs.map((r) => {
+    const normalized = runs.map((r: {
+      id: string;
+      projectId: string;
+      status: string;
+      createdAt: Date;
+      startedAt: Date | null;
+      finishedAt: Date | null;
+      error: string | null;
+      metrics: { rawJson: unknown } | null;
+      scripts: { scripts: unknown } | null;
+    }): NormalizedCheckRun => {
       const metricsSource = r.metrics?.rawJson as Record<string, unknown> | null;
       const scriptsSource = r.scripts?.scripts as Record<string, unknown> | PageScript[] | null;
       const additionalPageMetrics = normalizeAdditionalPages(metricsSource?.additionalPages);
@@ -780,7 +815,7 @@ app.get("/check-runs/active", requireAuth, async (req, res) => {
       where: { userId: req.user!.id },
       select: { id: true },
     });
-    const projectIds = projects.map((p) => p.id);
+    const projectIds = projects.map((p: { id: string }) => p.id);
     if (projectIds.length === 0) return res.json(null);
 
     const latestRun = await prisma.checkRun.findFirst({
@@ -816,7 +851,7 @@ app.get("/incidents", requireAuth, async (req, res) => {
       select: { id: true },
     });
 
-    const projectIds = projects.map((p) => p.id);
+    const projectIds = projects.map((p: { id: string }) => p.id);
     if (projectIds.length === 0) return res.json([]);
 
     const incidents = await prisma.incident.findMany({
@@ -828,12 +863,20 @@ app.get("/incidents", requireAuth, async (req, res) => {
 
     const priority = (lvl: string) => (lvl === "critical" ? 2 : 1);
 
-    incidents.sort((a, b) => {
+    incidents.sort((a: { level: string; createdAt: Date }, b: { level: string; createdAt: Date }) => {
       return priority(b.level) - priority(a.level) || +new Date(b.createdAt) - +new Date(a.createdAt);
     });
 
     res.json(
-      incidents.map((i) => ({
+      incidents.map((i: {
+        id: string;
+        projectId: string | null;
+        projectName: string;
+        metric: string;
+        level: string;
+        timeText: string;
+        createdAt: Date;
+      }) => ({
         id: i.id,
         projectId: i.projectId,
         projectName: i.projectName,
