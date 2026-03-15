@@ -31,7 +31,7 @@ describe("shouldRunProjectCheck", () => {
     it("throws on invalid frequency", () => {
         const lastRunAt = new Date(now.getTime() - 60 * 60 * 1000);
       
-        // @ts-expect-error
+        // @ts-expect-error testing runtime guard against invalid frequency
         expect(() => shouldRunProjectCheck("INVALID", lastRunAt, now)).toThrow();
       });
 
