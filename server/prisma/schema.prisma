@@ -27,7 +27,7 @@ model Project {
   alerts          Int            @default(0)
   lastIncidentAt  DateTime?
   metrics         Json           @default("{}")
-  checkFrequency  CheckFrequency @default(DAILY)
+  checkFrequency  CheckFrequency @default(DISABLED)
   additionalPages Json?          @default("[]")
   checkRuns       CheckRun[]
   incidents       Incident[]
@@ -80,6 +80,7 @@ model ScriptSnapshot {
 }
 
 enum CheckFrequency {
+  DISABLED
   HOURLY
   EVERY_6_HOURS  @map("6H")
   EVERY_12_HOURS @map("12H")

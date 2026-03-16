@@ -1,4 +1,5 @@
 type CheckFrequency =
+  | "DISABLED"
   | "HOURLY"
   | "EVERY_6_HOURS"
   | "EVERY_12_HOURS"
@@ -7,9 +8,13 @@ type CheckFrequency =
   | "MONTHLY";
 
 export function shouldRunProjectCheck(checkFrequency: CheckFrequency, lastRunAt: Date | null, now: Date):boolean {
+    if (checkFrequency === "DISABLED") {
+      return false;
+    }
     if (lastRunAt === null) {
         return true;
       }
+   
     const intervalMs = getFrequencyIntervalMs(checkFrequency);
     const elapsedMs = now.getTime() - lastRunAt.getTime();
     return elapsedMs >= intervalMs;
