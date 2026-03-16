@@ -1,4 +1,5 @@
 export const CHECK_FREQUENCIES = [
+    "DISABLED",
     "HOURLY",
     "EVERY_6_HOURS",
     "EVERY_12_HOURS",

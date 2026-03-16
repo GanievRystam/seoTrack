@@ -144,7 +144,6 @@ function setSessionCookie(res, payload) {
     res.cookie(SESSION_COOKIE, token, sessionCookieOptions);
 }
 function pickMetric(audits, key) {
-    console.log(audits);
     const v = audits?.[key]?.numericValue;
     if (typeof v !== "number")
         return 0;

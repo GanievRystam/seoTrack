@@ -19,6 +19,10 @@ describe("shouldRunProjectCheck", () => {
         const lastRunAt = new Date(now.getTime() - 2 * 60 * 60 * 1000);
         expect(shouldRunProjectCheck("HOURLY", lastRunAt, now)).toBe(true);
     });
+    it("returns false if interval equil DISABLED", () => {
+        const lastRunAt = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+        expect(shouldRunProjectCheck("DISABLED", lastRunAt, now)).toBe(false);
+    });
 
     it("respects different frequencies", () => {
         const lastRun6h = new Date(now.getTime() - 7 * 60 * 60 * 1000);
@@ -27,6 +31,7 @@ describe("shouldRunProjectCheck", () => {
         const lastRun6hNotElapsed = new Date(now.getTime() - 5 * 60 * 60 * 1000);
         expect(shouldRunProjectCheck("EVERY_6_HOURS", lastRun6hNotElapsed, now)).toBe(false);
     });
+    
 
     it("throws on invalid frequency", () => {
         const lastRunAt = new Date(now.getTime() - 60 * 60 * 1000);
