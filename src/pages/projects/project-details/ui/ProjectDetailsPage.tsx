@@ -24,11 +24,6 @@ export function ProjectDetailsPage() {
   } = useProjectDetailsPage({ projectId: id, historyId });
 
 
-
-    console.log(isProjectLoading);
-    console.log(isProjectLoading);
-    
-
   if (isProjectLoading) {
     return (
       <div className="table-container">
