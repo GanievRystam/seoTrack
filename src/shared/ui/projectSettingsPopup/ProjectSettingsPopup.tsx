@@ -1,5 +1,5 @@
 import { useState } from "react";
-import {CHECK_FREQUENCIES, type CheckFrequencyEnum} from '../../types/project'
+import {type CheckFrequencyEnum} from '../../types/project'
 import styles from "./ProjectSettingsPopup.module.css";
 import { useUpdateProjectSettingsMutation } from "../../../entities/project/api/projectsApi";
 type Values = {
