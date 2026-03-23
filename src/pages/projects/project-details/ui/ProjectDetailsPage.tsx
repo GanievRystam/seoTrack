@@ -5,7 +5,6 @@ import loading from "../../../../assets/loader.gif";
 import { ProjectMetricsPanel } from "../../../../widgets/ui/ProjectMetricsPanel";
 import { ProjectIssuesList } from "../../../../widgets/ui/ProjectIssuesList";
 import { ProjectScriptsList } from "../../../../widgets/ui/ProjectScriptsList";
-import { formatDate } from "../../../../shared/lib/formatDate";
 import { ProjectSettingsPopup } from "../../../../shared/ui/projectSettingsPopup/ProjectSettingsPopup";
 import { ProjectAdditionalPages } from "../../../../widgets/ui/ProjectAdditionalPages";
 import { useProjectDetailsPage } from "../model/useProjectDetailsPage";
@@ -26,7 +25,9 @@ export function ProjectDetailsPage() {
 
 
 
-
+    console.log(isProjectLoading);
+    console.log(isProjectLoading);
+    
 
   if (isProjectLoading) {
     return (
@@ -129,3 +130,4 @@ export function ProjectDetailsPage() {
     </>
   );
 }
+
